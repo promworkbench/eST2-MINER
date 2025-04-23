@@ -5,10 +5,10 @@ import org.deckfour.xes.info.impl.XLogInfoImpl;
 import org.processmining.basicutils.parameters.impl.PluginParametersImpl;
 
 public class Parameters extends PluginParametersImpl {
-    private double threshold_tau;  // in[0,1], determmines fraction of traces in original log
-    private double threshold_delta; // in [0,1], determmines fraction of traces in original log
-    private boolean removeImps;
-    private int max_depth;
+    private final double threshold_tau;  // in[0,1], determmines fraction of traces in original log
+    private final double threshold_delta; // in [0,1], determmines fraction of traces in original log
+    private final boolean removeImps;
+    private final int max_depth;
 
     public Parameters(int max_depth, double threshold_tau_result, double threshold_delta_result, boolean remIP) {
         this.threshold_tau = threshold_tau_result;
@@ -22,13 +22,6 @@ public class Parameters extends PluginParametersImpl {
         this.threshold_delta = 1;
         this.removeImps = true;
         this.max_depth = 4;
-    }
-
-    public Parameters(double threshold_tau) {
-        this.threshold_tau = threshold_tau; //fraction of fitting traces for a place to be fitting
-        this.threshold_delta = 1;
-        this.removeImps = true;
-        this.max_depth = 5;
     }
 
     public double getThresholdTau() {
@@ -57,9 +50,6 @@ public class Parameters extends PluginParametersImpl {
 
     @Override
     public String toString() {
-        return "tau-" + threshold_tau +
-                "-delta-" + threshold_delta +
-                "-rImp-" + removeImps +
-                "-dep-" + max_depth;
+        return "tau-" + threshold_tau + "-delta-" + threshold_delta + "-rImp-" + removeImps + "-dep-" + max_depth;
     }
 }

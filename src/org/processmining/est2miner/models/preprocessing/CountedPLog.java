@@ -1,99 +1,50 @@
 package org.processmining.est2miner.models.preprocessing;
 
-import org.deckfour.xes.extension.std.XExtendedEvent;
-import org.deckfour.xes.model.XEvent;
-import org.deckfour.xes.model.XTrace;
-import org.deckfour.xes.model.impl.XLogImpl;
-import org.processmining.partialorder.ptrace.model.PLog;
-import org.processmining.partialorder.ptrace.model.PTrace;
-import org.processmining.partialorder.ptrace.model.imp.PLogImp;
+import org.processmining.est2miner.models.coreobjects.ESTPartialOrder;
+import org.processmining.est2miner.models.coreobjects.ESTPartialOrderLog;
+import org.processmining.framework.util.Pair;
 
 import java.util.*;
 
 
 public class CountedPLog {
-    private PLog log;
-    private HashMap<PTrace, Integer> pTraceCounts;
-    private PLog variantLog;
+    private final ESTPartialOrderLog log;
+    private final HashMap<ESTPartialOrder, Integer> pTraceCounts;
+    private final ESTPartialOrderLog variantLog;
     private HashSet<Integer> variantPositions;
 
-    public CountedPLog(PLog log) {
+    public CountedPLog(ESTPartialOrderLog log) {
         this.log = log;
         pTraceCounts = computeCounts(log);
         variantLog = computeVariantLog();
     }
 
-    public CountedPLog(PLog log, HashMap<PTrace, Integer> pTraceCounts) {
+    public CountedPLog(ESTPartialOrderLog log, HashMap<ESTPartialOrder, Integer> pTraceCounts) {
         this.log = log;
         this.pTraceCounts = pTraceCounts;
         variantLog = computeVariantLog();
     }
 
-    public CountedPLog(PLog log, HashSet<Integer> variantPositions, HashMap<Integer, Integer> variantPositionCounts) {
-        this.log = log;
-        this.variantPositions = variantPositions;
-        variantLog = computeVariantLog(variantPositionCounts);
-    }
-
-    public HashMap<PTrace, Integer> getpTraceCounts() {
+    public HashMap<ESTPartialOrder, Integer> getPTraceCounts() {
         return pTraceCounts;
     }
 
-    public PLog getPLog() {
+    public ESTPartialOrderLog getPLog() {
         return log;
     }
 
-    public int computeSize() {
-        return pTraceCounts.values().stream().mapToInt(value -> value).sum();
-    }
-
-    public void putCountForPTrace(PTrace trace, int count) {
-        pTraceCounts.put(trace, count);
-    }
-
-    public PLog getVariantLog() {
+    public ESTPartialOrderLog getVariantLog() {
         return variantLog;
     }
 
-    private PLog computeVariantLog() {
-        XLogImpl variantXLog = new XLogImpl(log.getXLog().getAttributes());
-        PLogImp result = new PLogImp(variantXLog);
+    private ESTPartialOrderLog computeVariantLog() {
+        ESTPartialOrderLog result = new ESTPartialOrderLog();
         variantPositions = new HashSet<>();
 
-        for (int i = 0; i < log.size(); i++) {
-            PTrace pTrace = log.get(i);
+        for (ESTPartialOrder pTrace : log) {
             if (pTraceCounts.containsKey(pTrace)) {
-                variantXLog.add(pTrace.getTrace());
                 result.add(pTrace);
-                variantPositions.add(i);
             }
-        }
-
-        return result;
-    }
-
-    public HashMap<Integer, Integer> computeVariantPositionCounts() {
-        HashMap<Integer, Integer> positionCounts = new HashMap<>();
-
-        for (Integer variantPosition : variantPositions) {
-            positionCounts.put(variantPosition, pTraceCounts.get(log.get(variantPosition)));
-        }
-
-        return positionCounts;
-    }
-
-    private PLog computeVariantLog(HashMap<Integer, Integer> variantPositionCounts) {
-        XLogImpl variantXLog = new XLogImpl(log.getXLog().getAttributes());
-        PLogImp result = new PLogImp(variantXLog);
-        ArrayList<Integer> variantPositions = new ArrayList<>(variantPositionCounts.keySet());
-        variantPositions.sort(Integer::compareTo);
-        pTraceCounts = new HashMap<>();
-
-        for (Integer variantPosition : variantPositions) {
-            PTrace pTrace = log.get(variantPosition);
-            variantXLog.add(pTrace.getTrace());
-            result.add(pTrace);
-            pTraceCounts.put(pTrace, variantPositionCounts.get(variantPosition));
         }
 
         return result;
@@ -103,75 +54,74 @@ public class CountedPLog {
         return variantPositions;
     }
 
-    private HashMap<PTrace, Integer> computeCounts(PLog log) {
-        HashMap<String, HashSet<PTrace>> variantStringToPTrace = computeVariantStringToPTrace(log);
-        HashMap<PTrace, Integer> preliminaryCounts = makePreliminaryCounts(variantStringToPTrace);
-        HashMap<Integer, HashMap<PTrace, Integer>> countsForLength = computeCountsInLengthBins(preliminaryCounts);
-        HashMap<Integer, HashMap<PTrace, Integer>> countsForLengthPartial = combineCountsOfHomomorphismsWithBins(countsForLength);
-        HashMap<PTrace, Integer> counts = combineResult(countsForLengthPartial);
+    private HashMap<ESTPartialOrder, Integer> computeCounts(ESTPartialOrderLog log) {
+        HashMap<String, HashSet<ESTPartialOrder>> variantStringToPTrace = computeVariantStringToPTrace(log);
+        HashMap<ESTPartialOrder, Integer> preliminaryCounts = makePreliminaryCounts(variantStringToPTrace);
+        HashMap<Integer, ArrayList<Pair<ESTPartialOrder, Integer>>> countsForLength = computeCountsInLengthBins(preliminaryCounts);
+        HashMap<Integer, HashMap<ESTPartialOrder, Integer>> countsForLengthPartial = combineCountsOfHomomorphismsWithBins(countsForLength);
 
-        return counts;
+        return combineResult(countsForLengthPartial);
     }
 
-    private HashMap<PTrace, Integer> combineResult(HashMap<Integer, HashMap<PTrace, Integer>> countsForLengthPartial) {
-        HashMap<PTrace, Integer> result = new HashMap<>();
+    private HashMap<ESTPartialOrder, Integer> combineResult(HashMap<Integer, HashMap<ESTPartialOrder, Integer>> countsForLengthPartial) {
+        HashMap<ESTPartialOrder, Integer> result = new HashMap<>();
 
-        for (HashMap<PTrace, Integer> value : countsForLengthPartial.values()) {
+        for (HashMap<ESTPartialOrder, Integer> value : countsForLengthPartial.values()) {
             result.putAll(value);
         }
 
         return result;
     }
 
-    private HashMap<Integer, HashMap<PTrace, Integer>> combineCountsOfHomomorphismsWithBins(HashMap<Integer, HashMap<PTrace, Integer>> countsForLength) {
-        HashMap<Integer, HashMap<PTrace, Integer>> result = new HashMap<>();
+    private HashMap<Integer, HashMap<ESTPartialOrder, Integer>> combineCountsOfHomomorphismsWithBins(HashMap<Integer, ArrayList<Pair<ESTPartialOrder, Integer>>> countsForLength) {
+        HashMap<Integer, HashMap<ESTPartialOrder, Integer>> result = new HashMap<>();
 
-        for (Map.Entry<Integer, HashMap<PTrace, Integer>> integerHashMapEntry : countsForLength.entrySet()) {
+        for (Map.Entry<Integer, ArrayList<Pair<ESTPartialOrder, Integer>>> integerHashMapEntry : countsForLength.entrySet()) {
             result.put(integerHashMapEntry.getKey(), combineCountsOfHomomorphisms(integerHashMapEntry.getValue()));
         }
 
         return result;
     }
 
-    private HashMap<Integer, HashMap<PTrace, Integer>> computeCountsInLengthBins(HashMap<PTrace, Integer> preliminaryCounts) {
-        HashMap<Integer, HashMap<PTrace, Integer>> result = new HashMap<>();
+    private HashMap<Integer, ArrayList<Pair<ESTPartialOrder, Integer>>> computeCountsInLengthBins(HashMap<ESTPartialOrder, Integer> preliminaryCounts) {
+        HashMap<Integer, ArrayList<Pair<ESTPartialOrder, Integer>>> result = new HashMap<>();
 
-        for (Map.Entry<PTrace, Integer> pTraceIntegerEntry : preliminaryCounts.entrySet()) {
+        for (Map.Entry<ESTPartialOrder, Integer> pTraceIntegerEntry : preliminaryCounts.entrySet()) {
             int length = pTraceIntegerEntry.getKey().size();
 
             if (!result.containsKey(length)) {
-                result.put(length, new HashMap<>());
+                result.put(length, new ArrayList<>());
             }
 
-            result.get(length).put(pTraceIntegerEntry.getKey(), pTraceIntegerEntry.getValue());
+            result.get(length).add(new Pair<>(pTraceIntegerEntry.getKey(), pTraceIntegerEntry.getValue()));
         }
 
         return result;
     }
 
-    private HashMap<PTrace, Integer> combineCountsOfHomomorphisms(HashMap<PTrace, Integer> preliminaryCounts) {
-        HashMap<PTrace, Integer> result = new HashMap<>();
-        LinkedList<PTrace> stack = new LinkedList<>(preliminaryCounts.keySet());
+    private HashMap<ESTPartialOrder, Integer> combineCountsOfHomomorphisms(ArrayList<Pair<ESTPartialOrder, Integer>> preliminaryCounts) {
+        HashMap<ESTPartialOrder, Integer> result = new HashMap<>();
+        LinkedList<Pair<ESTPartialOrder, Integer>> stack = new LinkedList<>(preliminaryCounts);
         outerLoop:
         while (!stack.isEmpty()) {
-            PTrace top = stack.pop();
-            for (PTrace trace : result.keySet()) {
-                if (arePartialOrdersIsomorphic(top, trace)) {
-                    result.put(trace, result.get(trace) + preliminaryCounts.get(trace));
+            Pair<ESTPartialOrder, Integer> top = stack.pop();
+            for (ESTPartialOrder trace : result.keySet()) {
+                if (arePartialOrdersIsomorphic(top.getFirst(), trace)) {
+                    result.put(trace, result.get(trace) + top.getSecond());
                     continue outerLoop;
                 }
             }
 
-            result.put(top, preliminaryCounts.get(top));
+            result.put(top.getFirst(), top.getSecond());
         }
 
         return result;
     }
 
-    private HashMap<String, HashSet<PTrace>> computeVariantStringToPTrace(PLog pLog) {
-        HashMap<String, HashSet<PTrace>> result = new HashMap<>();
-        for (PTrace pTrace : pLog) {
-            String traceString = createTraceString(pTrace.getTrace());
+    private HashMap<String, HashSet<ESTPartialOrder>> computeVariantStringToPTrace(ESTPartialOrderLog pLog) {
+        HashMap<String, HashSet<ESTPartialOrder>> result = new HashMap<>();
+        for (ESTPartialOrder pTrace : pLog) {
+            String traceString = createTraceString(pTrace);
             if (!result.containsKey(traceString)) {
                 result.put(traceString, new HashSet<>());
             }
@@ -182,24 +132,22 @@ public class CountedPLog {
         return result;
     }
 
-    private HashMap<PTrace, Integer> makePreliminaryCounts(HashMap<String, HashSet<PTrace>> stringToVariantInstance) {
-        HashMap<PTrace, Integer> result = new HashMap<>();
+    private HashMap<ESTPartialOrder, Integer> makePreliminaryCounts(HashMap<String, HashSet<ESTPartialOrder>> stringToVariantInstance) {
+        HashMap<ESTPartialOrder, Integer> result = new HashMap<>();
 
-        for (HashSet<PTrace> value : stringToVariantInstance.values()) {
+        for (HashSet<ESTPartialOrder> value : stringToVariantInstance.values()) {
             result.put(value.iterator().next(), value.size());
         }
 
         return result;
     }
 
-    private String createTraceString(XTrace trace) {
+    private String createTraceString(ESTPartialOrder trace) {
         StringBuilder traceString = new StringBuilder();
         traceString.append("<");
 
-        for (XEvent event : trace) {
-            XExtendedEvent wrapper = new XExtendedEvent(event);
-
-            traceString.append(wrapper.getName()).append("+").append(wrapper.getStandardTransition());
+        for (String event : trace) {
+            traceString.append(event);
             traceString.append(", ");
         }
 
@@ -208,7 +156,7 @@ public class CountedPLog {
         return traceString.toString();
     }
 
-    public boolean arePartialOrdersIsomorphic(PTrace partialOrderA, PTrace partialOrderB) {
+    public boolean arePartialOrdersIsomorphic(ESTPartialOrder partialOrderA, ESTPartialOrder partialOrderB) {
         if (partialOrderA.size() != partialOrderB.size()) {
             return false;
         }

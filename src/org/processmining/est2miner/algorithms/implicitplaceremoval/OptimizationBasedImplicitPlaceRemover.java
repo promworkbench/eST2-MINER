@@ -15,17 +15,17 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         super(transitions, log);
     }
 
-    //removes all structurally implicit places in the givn pM (the relevant Trace variants are ignored)
+    //removes all structurally implicit places in the given pM (the relevant Trace variants are ignored)
     public ESTProcessModel removeAllIPs(ESTProcessModel pM) {
         pM.updateStatus(log); //just to be safe
         //compute all the stuff needed for the LPP
-        ArrayList<ESTPlace> places = (ArrayList<ESTPlace>) pM.getPlaces().clone();
-        final ArrayList<ESTPlace> finalPlaces = new ArrayList<ESTPlace>();
+        ArrayList<ESTPlace> places = new ArrayList<>(pM.getPlaces());
+        final ArrayList<ESTPlace> finalPlaces = new ArrayList<>();
         final String[] transitions = pM.getTransitions();
         //compute pre-incidence, post-incidence and incidence matrix of pM: for each place there is a row, for each transition a column
-        final ArrayList<Integer[]> preIncMatrix = new ArrayList<Integer[]>();
-        final ArrayList<Integer[]> postIncMatrix = new ArrayList<Integer[]>();
-        final ArrayList<Integer[]> incMatrix = new ArrayList<Integer[]>();
+        final ArrayList<Integer[]> preIncMatrix = new ArrayList<>();
+        final ArrayList<Integer[]> postIncMatrix = new ArrayList<>();
+        final ArrayList<Integer[]> incMatrix = new ArrayList<>();
         for (int p = 0; p < places.size(); p++) {
             preIncMatrix.add(new Integer[transitions.length]);
             postIncMatrix.add(new Integer[transitions.length]);
@@ -49,7 +49,7 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         }
         //do the LPP magic to check implicitness for each place
         //increase speed by removing implicit places for the next iteration
-        ArrayList<ESTPlace> tempPlaces = (ArrayList<ESTPlace>) places.clone();
+        ArrayList<ESTPlace> tempPlaces = new ArrayList<>(places);
         while (!tempPlaces.isEmpty()) {
             int placePos = places.indexOf(tempPlaces.get(0));
             if (isImplicitByLPP(placePos, places, transitions, preIncMatrix, incMatrix)) {
@@ -74,9 +74,9 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         //compute all the stuff needed for the LPP
         places.add(currentP);
         //compute pre-incidence, post-incidence and incidence matrix of pM: for each place there is a row, for each transition a column
-        final ArrayList<Integer[]> preIncMatrix = new ArrayList<Integer[]>();
-        final ArrayList<Integer[]> postIncMatrix = new ArrayList<Integer[]>();
-        final ArrayList<Integer[]> incMatrix = new ArrayList<Integer[]>();
+        final ArrayList<Integer[]> preIncMatrix = new ArrayList<>();
+        final ArrayList<Integer[]> postIncMatrix = new ArrayList<>();
+        final ArrayList<Integer[]> incMatrix = new ArrayList<>();
         for (int p = 0; p < places.size(); p++) {
             preIncMatrix.add(new Integer[transitions.length]);
             postIncMatrix.add(new Integer[transitions.length]);
@@ -104,9 +104,8 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         if (isImplicitByLPP(placePos, places, transitions, preIncMatrix, incMatrix)) {
             //this place is implicit
             result.add(currentP);
-        } else {
-            //currentP is not implciit, do not add
         }
+
         return result;
     }
 
@@ -125,7 +124,7 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         LinearObjectiveFunction objectiveFunction = new LinearObjectiveFunction(coefficientsLinearObjectiveFunction, 0);
 
         //Add the linear constraints w.r.t. the current place currP, using k, x, Y, Z, incMatrix, preIncMatrix
-        Collection<LinearConstraint> constraints = new ArrayList<LinearConstraint>();
+        Collection<LinearConstraint> constraints = new ArrayList<>();
         //Type 0: ensure currP is not in Y, Z, that is currP=0
         double[] removeCurrPY = new double[(places.size() * 2) + 2];//coefficients are all 0, except for currP in Y
         double[] removeCurrPZ = new double[(places.size() * 2) + 2];//coefficients are all 0, except for currP in Z
@@ -184,7 +183,7 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         }
 
         //Type 3: forall t with currP in pre(t): Z*pre(q, t) + x >= k *pre(currP, t), for q in P/{currP}
-        // --> Z*pre(q, t) + x - k* pre(currP, t) >=0 	//TODO in contrast to paper (imp places in net systems, garcia&colom, proposition 13) seems to work fine for k=1. explain this result theoretically?!
+        // --> Z*pre(q, t) + x - k* pre(currP, t) >=0
         for (int t = 0; t < transitions.length; t++) {
             if (preIncMatrix.get(currP)[t] == 1) {//for all t with currP in pre(t)
                 double[] coefficients = new double[(places.size() * 2) + 2];
@@ -192,7 +191,6 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
                     coefficients[p] = 0; //coefficients of Y=0
                     coefficients[p + places.size()] = preIncMatrix.get(p)[t]; //coefficients of Z = pre(p,t)
                 }
-                //coefficients[places.size()*2] = (-1)*preIncMatrix.get(currP)[t];//coefficient of k=-pre(currP, t)
                 coefficients[(places.size() * 2) + 1] = 1;//coefficient of x=1
                 constraints.add(new LinearConstraint(coefficients, Relationship.GEQ, preIncMatrix.get(currP)[t]));
             }
@@ -202,75 +200,9 @@ public class OptimizationBasedImplicitPlaceRemover extends AbstractImplicitPlace
         try {
             solver.optimize(objectiveFunction, new LinearConstraintSet(constraints));
         } catch (NoFeasibleSolutionException NFSE) {
-            //				System.out.println("LPP Solver found no feasable solution for reference set of place "+placeToNamedString(places[currP], transitions));
             return false;
         }
-        /*
-         * //for debuggin print out the found solution double[] solutionSupport
-         * = solution.getPoint(); String refSetStringY = "Y: "; String
-         * refSetStringZ = "Z: "; String k = "k: "; String x = "x: "; for (int
-         * pos = 0; pos < solutionSupport.length-2; pos++) { if
-         * (solutionSupport[pos] > 0 && pos < places.size()) { refSetStringY =
-         * refSetStringY + placeToNamedString(places.get(pos), transitions); }
-         * else if(solutionSupport[pos] > 0 && pos < places.size()*2){
-         * refSetStringZ = refSetStringZ +
-         * placeToNamedString(places.get(pos-places.size()), transitions); } } k
-         * = k+solutionSupport[places.size()*2]; x =
-         * x+solutionSupport[places.size()*2+1];
-         * System.out.println("Place "+placeToNamedString(places.get(currP),
-         * transitions)+" is implicit with solution ");
-         * System.out.println(refSetStringY); System.out.println(refSetStringZ);
-         * System.out.println(k); System.out.println(x);
-         */
+
         return true;
     }
-
-
-    //Utility Methods_______________________________________________________________________________________________
-
-    private String placeToNamedString(final ESTPlace p, final String[] transitions) {
-        return getTransitionNames(p.getInputTrKey(), transitions).toString() + "|" + getTransitionNames(p.getOutputTrKey(), transitions).toString() + ",";
-    }
-
-    //returns a collection containing all transitions names from the given transitions array
-    private Collection<String> getTransitionNames(final int key, final String[] transitions) {
-        Collection<String> result = new ArrayList<String>();
-        if (key > (Math.pow(2, transitions.length))) {
-            return null;
-        }
-        for (int i = 0; i < transitions.length; i++) {
-            if ((key & getMask(i, transitions)) > 0) { //test key for ones
-                result.add(transitions[i]);
-            }
-        }
-
-        return result;
-    }
-
-    //return the transitions corresponding to the given key
-    private Collection<String> getTransitions(final int key, final ESTProcessModel pM) {
-        Collection<String> result = new ArrayList<String>();
-        if (key > Math.pow(2, pM.getTransitions().length)) {
-            return null;
-        }
-        for (int i = 0; i < pM.getTransitions().length; i++) {
-            if ((key & getMask(i, pM.getTransitions())) > 0) { //test key for ones
-                result.add(pM.getTransitions()[i]);
-            }
-        }
-        return result;
-    }
-
-    //return bitmask corresponding to position in the transition array
-    protected int getMask(final int position, final String[] transitions) {
-        return (1 << (transitions.length - 1 - position));
-    }
-
-    public ESTProcessModel removeAllIPsAndRepair(ESTProcessModel inputPM, ArrayList<ArrayList<Integer>> relevantTraceVariants) {
-        System.out.println("ERROR: IP Removal with repair not imlemented!");
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-
 }

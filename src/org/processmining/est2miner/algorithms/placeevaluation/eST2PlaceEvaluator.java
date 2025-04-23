@@ -1,23 +1,20 @@
 package org.processmining.est2miner.algorithms.placeevaluation;
 
+import org.processmining.est2miner.models.coreobjects.ESTPartialOrder;
+import org.processmining.est2miner.models.coreobjects.ESTPartialOrderLog;
 import org.processmining.est2miner.models.coreobjects.ESTPlace;
 import org.processmining.models.graphbased.directed.petrinet.Petrinet;
 import org.processmining.models.graphbased.directed.petrinet.elements.Place;
 import org.processmining.models.graphbased.directed.petrinet.elements.Transition;
 import org.processmining.models.graphbased.directed.petrinet.impl.PetrinetImpl;
-import org.processmining.partialorder.ptrace.model.PLog;
-import org.processmining.partialorder.ptrace.model.PTrace;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 public class eST2PlaceEvaluator {
-    enum FitnessStatus {
-        OVERFED,
-        UNDERFED,
-        OVERANDUNDERFED,
-        Fitting;
+    public enum FitnessStatus {
+        OVERFED, UNDERFED, OVER_AND_UNDERFED, Fitting;
 
         @Override
         public String toString() {
@@ -26,7 +23,7 @@ public class eST2PlaceEvaluator {
                     return "Overfed";
                 case UNDERFED:
                     return "Underfed";
-                case OVERANDUNDERFED:
+                case OVER_AND_UNDERFED:
                     return "Over- and Underfed";
                 case Fitting:
                     return "Fitting";
@@ -38,7 +35,7 @@ public class eST2PlaceEvaluator {
 
     public static FitnessStatus getStatus(boolean isOverfed, boolean isUnderfed) {
         if (isOverfed && isUnderfed) {
-            return FitnessStatus.OVERANDUNDERFED;
+            return FitnessStatus.OVER_AND_UNDERFED;
         } else if (isOverfed) {
             return FitnessStatus.OVERFED;
         } else if (isUnderfed) {
@@ -48,7 +45,7 @@ public class eST2PlaceEvaluator {
         }
     }
 
-    public static PlaceLogReplayResult evaluatePlaceWithLog(PLog pLog, HashMap<PTrace, Integer> traceCounts, HashSet<String> ingoingTransitions, HashSet<String> outgoingTransitions, ESTPlace place) throws Exception {
+    public static PlaceLogReplayResult evaluatePlaceWithLog(ESTPartialOrderLog pLog, HashMap<ESTPartialOrder, Integer> traceCounts, HashSet<String> ingoingTransitions, HashSet<String> outgoingTransitions, ESTPlace place) {
         Petrinet placePetriNet = createPlacePetriNet(ingoingTransitions, outgoingTransitions);
 
         int overfedCount = 0;
@@ -57,7 +54,7 @@ public class eST2PlaceEvaluator {
         int fittingCount = 0;
 
         for (int i = 0; i < pLog.size(); i++) {
-            PTrace trace = pLog.get(i);
+            ESTPartialOrder trace = pLog.get(i);
             FitnessStatus fitnessStatus = evaluatePlace(trace, placePetriNet);
 
             switch (fitnessStatus) {
@@ -67,12 +64,11 @@ public class eST2PlaceEvaluator {
                 case UNDERFED:
                     underfedCount = underfedCount + traceCounts.get(trace);
                     break;
-                case OVERANDUNDERFED:
+                case OVER_AND_UNDERFED:
                     overAndUnderfedCount = overAndUnderfedCount + traceCounts.get(trace);
                     break;
                 case Fitting:
                     place.editVariantVector(i, true);
-//                    place.editVariantVector(0, true);
                     fittingCount = fittingCount + traceCounts.get(trace);
                     break;
             }
@@ -81,7 +77,7 @@ public class eST2PlaceEvaluator {
         return new PlaceLogReplayResult(overfedCount, underfedCount, overAndUnderfedCount, fittingCount);
     }
 
-    public static FitnessStatus evaluatePlace(PTrace pTrace, Petrinet placePetriNet) throws Exception {
+    public static FitnessStatus evaluatePlace(ESTPartialOrder pTrace, Petrinet placePetriNet) {
         LpoESTFireValidator validator = new LpoESTFireValidator(placePetriNet, pTrace);
 
         LpoESTValidationResult validate = validator.validate();

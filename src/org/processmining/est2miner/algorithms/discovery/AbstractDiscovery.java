@@ -30,12 +30,12 @@ public abstract class AbstractDiscovery extends Thread {
     }
 
 
-    //runs this thread until termination or interuption
+    //runs this thread until termination or interruption
     @Override
     public void run() {
         try {
             this.addPlaces();
-            System.out.println("Finished adding places without interuption.");
+            System.out.println("Finished adding places without interruption.");
 
         } catch (InterruptedException e) {
             System.out.println("Place Discovery interrupted!");
@@ -65,24 +65,23 @@ public abstract class AbstractDiscovery extends Thread {
                 ESTPlaceStatus fitness = evaluator.testPlace(current.getIngoingTransitionNameSet(transitions), current.getOutgoingTransitionNameSet(transitions), current);
                 if (fitness == ESTPlaceStatus.FIT) {//dealing with locally fit places
                     this.handleLocallyFittingPlace(current);
-                } else {// dealing with locally unfit places (currently: just ignore them)
                 }
 
                 //prepare next candidate iteration
                 current = candidates.getNext(current, fitness);
-            }//end of (non-interupted) current place adding iteration
+            }//end of (non-interrupted) current place adding iteration
             else {
-                //handling interuption (timelimit)
-                System.out.println("Timelimit for adding places has been reached (or other interuption).");
+                //handling interruption (time limit)
+                System.out.println("Time limit for adding places has been reached (or other interruption).");
                 break;
             }
-        }//end of candidate traversal loop (interupted or finished)
+        }//end of candidate traversal loop (interrupted or finished)
         System.out.println("________________________End of Standard Place Evaluation________________________________________________________________________ \n");
         this.pM.updateAndPrintStatus(log);
 
 
         System.out.println("\n ______________________Perform end of discovery actions: ________________________________________________________________________ \n");
-        pM = endOfDiscoveryActions(pM); //for delta discovery, this evaluates additional ('virtual') levels without adding further potentialplaces
+        pM = endOfDiscoveryActions(pM); //for delta discovery, this evaluates additional ('virtual') levels without adding further potential places
         this.pM.updateAndPrintStatus(log);
 
         if (this.removeImpsConcurrently) {//if enabled, remove implicit places from current model
@@ -106,9 +105,7 @@ public abstract class AbstractDiscovery extends Thread {
         return (Integer.bitCount(current.getInputTrKey()) + Integer.bitCount(current.getOutputTrKey()));
     }
 
-    public ESTProcessModel getpM() {
+    public ESTProcessModel getPM() {
         return pM;
     }
-
-
 }

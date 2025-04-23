@@ -1,10 +1,10 @@
 package org.processmining.est2miner.models;
 
 public class eSTPluginStatistics {
-    private double thresholdTau;
-    private double thresholdDelta;
-    private int maxDepth;
-    private int deltaAdaptationSteepness;
+    private final double thresholdTau;
+    private final double thresholdDelta;
+    private final int maxDepth;
+    private final int deltaAdaptationSteepness;
     private double logProcessTime;
     private double discoveryTime;
     private double postprocessingTime;
@@ -35,16 +35,6 @@ public class eSTPluginStatistics {
 
     @Override
     public String toString() {
-        return pluginStatisticsString +
-                "\n\n" +
-                "eSTPluginStatistics{" +
-                "\n\tthresholdTau = " + thresholdTau +
-                ",\n\tthresholdDelta = " + thresholdDelta +
-                ",\n\tmaxDepth = " + maxDepth +
-                ",\n\tdeltaAdaptationSteepness = " + deltaAdaptationSteepness +
-                ",\n\tlogProcessTime = " + logProcessTime + " [ms]" +
-                ",\n\tdiscoveryTime = " + discoveryTime + " [ms]" +
-                ",\n\tpostprocessingTime = " + postprocessingTime + " [ms]" +
-                "\n}";
+        return pluginStatisticsString + "\n\n" + "eSTPluginStatistics{" + "\n\tthresholdTau = " + thresholdTau + ",\n\tthresholdDelta = " + thresholdDelta + ",\n\tmaxDepth = " + maxDepth + ",\n\tdeltaAdaptationSteepness = " + deltaAdaptationSteepness + ",\n\tlogProcessTime = " + logProcessTime + " [ms]" + ",\n\tdiscoveryTime = " + discoveryTime + " [ms]" + ",\n\tpostprocessingTime = " + postprocessingTime + " [ms]" + "\n}";
     }
 }

@@ -37,14 +37,12 @@ public class MaxFlowPreflowN3 {
         }
 
         for (int sz = 0; ; ) {
-            if (sz == 0) {
-                for (int i = 0; i < n; i++) {
-                    if (i != s && i != t && e[i] > 0) {
-                        if (sz != 0 && h[i] > h[maxh[0]]) {
-                            sz = 0;
-                        }
-                        maxh[sz++] = i;
+            for (int i = 0; i < n; i++) {
+                if (i != s && i != t && e[i] > 0) {
+                    if (sz != 0 && h[i] > h[maxh[0]]) {
+                        sz = 0;
                     }
+                    maxh[sz++] = i;
                 }
             }
             if (sz == 0) {

@@ -10,7 +10,7 @@ import org.processmining.framework.util.ui.wizard.ProMWizardStep;
 
 import javax.swing.*;
 
-//this class provides the userinterface, takes parameter values and stores them in the parameters
+//this class provides the user interface, takes parameter values and stores them in the parameters
 
 public class UIDialog extends ProMPropertiesPanel implements ProMWizardStep<Parameters> {
     public static String TITLE = "Configure eST-Miner parameters:";
@@ -18,11 +18,6 @@ public class UIDialog extends ProMPropertiesPanel implements ProMWizardStep<Para
     NiceDoubleSlider threshold_delta;
     JCheckBox RemoveImplicitPlacesBox;
     NiceIntegerSlider treeDepth;
-
-    public UIDialog(String title) {
-        super(title);
-        // TODO Auto-generated constructor stub
-    }
 
     //method that actually takes the parameters
     public UIDialog() {
@@ -54,23 +49,18 @@ public class UIDialog extends ProMPropertiesPanel implements ProMWizardStep<Para
 
         boolean removeImplicitPlaces = RemoveImplicitPlacesBox.isSelected();
 
-        Parameters parameters = new Parameters(treeDepth, threshold_tau_result, threshold_delta_result, removeImplicitPlaces);
-
-        return parameters;
+        return new Parameters(treeDepth, threshold_tau_result, threshold_delta_result, removeImplicitPlaces);
     }
 
     public boolean canApply(Parameters model, JComponent component) {
-        // TODO Auto-generated method stub
         return true;
     }
 
     public JComponent getComponent(Parameters model) {
-        // TODO Auto-generated method stub
         return this;
     }
 
     public String getTitle() {
-        // TODO Auto-generated method stub
         return TITLE;
     }
 

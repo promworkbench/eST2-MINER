@@ -1,28 +1,28 @@
 package org.processmining.est2miner.algorithms.placeevaluation;
 
-import org.deckfour.xes.model.XEvent;
+import org.processmining.est2miner.models.coreobjects.ESTPartialOrder;
 import org.processmining.models.graphbased.directed.petrinet.Petrinet;
 import org.processmining.models.graphbased.directed.petrinet.PetrinetEdge;
 import org.processmining.models.graphbased.directed.petrinet.PetrinetNode;
 import org.processmining.models.graphbased.directed.petrinet.elements.Place;
 import org.processmining.models.semantics.petrinet.Marking;
-import org.processmining.partialorder.ptrace.model.PTrace;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class LpoESTFireValidator extends LpoESTFlowValidator {
     private final Place place;
-    private final HashMap<XEvent, Integer> placeToLocalMarking;
+    private final HashMap<Integer, Integer> placeToLocalMarking;
     boolean valid;
     boolean flow;
     boolean branched;
     boolean overfed;
     boolean underfed;
 
-    public LpoESTFireValidator(Petrinet petrinet, PTrace partialOrderTrace) throws Exception {
-        super(petrinet, new Marking(), partialOrderTrace, false);
+    public LpoESTFireValidator(Petrinet petrinet, ESTPartialOrder partialOrderTrace) {
+        super(petrinet, new Marking(), partialOrderTrace);
         this.place = petrinet.getPlaces().iterator().next();
         placeToLocalMarking = new HashMap<>();
 
@@ -36,17 +36,12 @@ public class LpoESTFireValidator extends LpoESTFlowValidator {
     @Override
     public LpoESTValidationResult validate() {
         // Order the partial ordered trace into a valid total order of the partial order
-        ArrayList<XEvent> totalOrder = buildTotalOrdering();
+        ArrayList<Integer> totalOrder = buildTotalOrdering();
 
         fireForwards(totalOrder);
 
         if (underfed || valid) {
-            return new LpoESTValidationResult(
-                    createPlaceString(place),
-                    LpoESTValidationResult.ValidationPhase.FORWARDS,
-                    overfed,
-                    underfed
-            );
+            return new LpoESTValidationResult(createPlaceString(place), LpoESTValidationResult.ValidationPhase.FORWARDS, overfed, underfed);
         }
 
         // Resetting the branched value to false such that we can check the value for the backwards firing
@@ -55,41 +50,31 @@ public class LpoESTFireValidator extends LpoESTFlowValidator {
         fireBackwards(totalOrder);
 
         if (underfed || valid) {
-            return new LpoESTValidationResult(
-                    createPlaceString(place),
-                    LpoESTValidationResult.ValidationPhase.BACKWARDS,
-                    overfed,
-                    underfed
-            );
+            return new LpoESTValidationResult(createPlaceString(place), LpoESTValidationResult.ValidationPhase.BACKWARDS, overfed, underfed);
         }
 
         // Rest with flow
-        valid = this.checkFlowForPlace(place, partialOrderTrace);
+        valid = this.checkFlowForPlace(place);
         underfed = !valid;
 
-        return new LpoESTValidationResult(
-                createPlaceString(place),
-                LpoESTValidationResult.ValidationPhase.FLOW,
-                overfed,
-                underfed
-        );
+        return new LpoESTValidationResult(createPlaceString(place), LpoESTValidationResult.ValidationPhase.FLOW, overfed, underfed);
     }
 
-    private ArrayList<XEvent> buildTotalOrdering() {
-        ArrayList<XEvent> ordering = new ArrayList<>();
-        partialOrderTrace.getStartEventIndices().forEach(integer -> ordering.add(partialOrderTrace.getEvent(integer)));
-        HashSet<XEvent> contained = new HashSet<>(ordering);
+    private ArrayList<Integer> buildTotalOrdering() {
+        ArrayList<Integer> ordering = new ArrayList<>();
+        ordering.add(0);
+        HashSet<Integer> contained = new HashSet<>(ordering);
 
-        LinkedList<XEvent> examineLater = new LinkedList<>(partialOrderTrace.getTrace());
+        LinkedList<Integer> examineLater = IntStream.range(0, partialOrderTrace.getActivities().size()).boxed().collect(Collectors.toCollection(LinkedList::new));
         while (!examineLater.isEmpty()) {
-            XEvent e = examineLater.removeFirst();
+            Integer e = examineLater.removeFirst();
             if (contained.contains(e)) {
                 continue;
             }
 
             boolean add = true;
-            for (Integer pre : partialOrderTrace.getPredecessorIndices(partialOrderTrace.getTrace().indexOf(e))) {
-                if (!contained.contains(partialOrderTrace.getEvent(pre))) {
+            for (Integer pre : partialOrderTrace.getPredecessorIndices(e)) {
+                if (!contained.contains(pre)) {
                     add = false;
                     break;
                 }
@@ -105,76 +90,63 @@ public class LpoESTFireValidator extends LpoESTFlowValidator {
         return ordering;
     }
 
-    private void fireForwards(ArrayList<XEvent> totalOrder) {
+    private void fireForwards(ArrayList<Integer> totalOrder) {
         // Initialize the marking of the tested place to be empty
-        totalOrder.forEach(xEvent -> {
-            placeToLocalMarking.put(xEvent, 0);
-        });
-        LinkedList<XEvent> queue = new LinkedList<>(totalOrder);
-        fire(queue, true,
-                petrinet::getInEdges,
-                petrinet::getOutEdges,
-                e -> partialOrderTrace.getSuccessorIndices(partialOrderTrace.getTrace().indexOf(e)).stream().map(partialOrderTrace::getEvent).collect(Collectors.toCollection(HashSet::new)));
+        totalOrder.forEach(activity_pos -> placeToLocalMarking.put(activity_pos, 0));
+        LinkedList<Integer> queue = new LinkedList<>(totalOrder);
+        fire(queue, true, petrinet::getInEdges, petrinet::getOutEdges, pos -> partialOrderTrace.getSuccessorIndices(pos));
     }
 
-    private void fireBackwards(ArrayList<XEvent> totalOrder) {
-        LinkedList<XEvent> queue = new LinkedList<>();
+    private void fireBackwards(ArrayList<Integer> totalOrder) {
+        LinkedList<Integer> queue = new LinkedList<>();
 
         for (int i = totalOrder.size() - 1; i >= 0; i--) {
             placeToLocalMarking.put(totalOrder.get(i), 0);
             queue.add(totalOrder.get(i));
         }
 
-        fire(queue, false,
-                petrinet::getOutEdges,
-                petrinet::getInEdges,
-                e -> partialOrderTrace.getPredecessorIndices(partialOrderTrace.getTrace().indexOf(e)).stream().map(partialOrderTrace::getEvent).collect(Collectors.toCollection(HashSet::new)));
+        fire(queue, false, petrinet::getOutEdges, petrinet::getInEdges, pos -> partialOrderTrace.getPredecessorIndices(pos));
     }
 
-    private void fire(LinkedList<XEvent> firingOrder, Boolean forwards,
-                      Function<PetrinetNode, Collection<PetrinetEdge<? extends PetrinetNode, ? extends
-                              PetrinetNode>>> preArcs,
-                      Function<PetrinetNode, Collection<PetrinetEdge<? extends PetrinetNode, ? extends
-                              PetrinetNode>>> postArcs,
-                      Function<XEvent, HashSet<XEvent>> nextEvents) {
+    private void fire(LinkedList<Integer> firingOrder, Boolean forwards, Function<PetrinetNode, Collection<PetrinetEdge<? extends PetrinetNode, ? extends PetrinetNode>>> preArcs, Function<PetrinetNode, Collection<PetrinetEdge<? extends PetrinetNode, ? extends PetrinetNode>>> postArcs, Function<Integer, Collection<Integer>> nextEvents) {
         if (firingOrder.isEmpty()) {
             return;
         }
 
-        XEvent endEvent = firingOrder.getLast();
+        Integer lastActivityPos = firingOrder.getLast();
         while (!firingOrder.isEmpty()) {
-            XEvent e = firingOrder.removeFirst();
+            Integer activityPos = firingOrder.removeFirst();
+            String activity = partialOrderTrace.get(activityPos);
 
             // can fire?
-            if (eventToTransition.containsKey(e)) {
+            if (eventToTransition.containsKey(activity)) {
                 // fire
-                for (PetrinetEdge<? extends PetrinetNode, ? extends PetrinetNode> edge : preArcs.apply(eventToTransition.get(e))) {
-                    int updatedNumberOfTokens = placeToLocalMarking.get(e) - getWeight(edge);
-                    placeToLocalMarking.put(e, updatedNumberOfTokens);
+                for (PetrinetEdge<? extends PetrinetNode, ? extends PetrinetNode> edge : preArcs.apply(eventToTransition.get(activity))) {
+                    int updatedNumberOfTokens = placeToLocalMarking.get(activityPos) - getWeight(edge);
+                    placeToLocalMarking.put(activityPos, updatedNumberOfTokens);
                     if (updatedNumberOfTokens < 0) {
                         valid = false;
                     }
                 }
 
-                for (PetrinetEdge<? extends PetrinetNode, ? extends PetrinetNode> edge : postArcs.apply(eventToTransition.get(e))) {
-                    placeToLocalMarking.put(e, placeToLocalMarking.get(e) + getWeight(edge));
+                for (PetrinetEdge<? extends PetrinetNode, ? extends PetrinetNode> edge : postArcs.apply(eventToTransition.get(activity))) {
+                    placeToLocalMarking.put(activityPos, placeToLocalMarking.get(activityPos) + getWeight(edge));
                 }
             }
 
             // push to first later and check for complex places
-            if (!nextEvents.apply(e).isEmpty()) {
-                if (nextEvents.apply(e).size() > 1 && placeToLocalMarking.get(e) > 0) {
+            if (!nextEvents.apply(activityPos).isEmpty()) {
+                if (nextEvents.apply(activityPos).size() > 1 && placeToLocalMarking.get(activityPos) > 0) {
                     branched = true;
                 }
-                XEvent firstLater = nextEvents.apply(e).iterator().next();
-                placeToLocalMarking.put(firstLater, placeToLocalMarking.get(firstLater) + placeToLocalMarking.get(e));
+                Integer firstLater = nextEvents.apply(activityPos).iterator().next();
+                placeToLocalMarking.put(firstLater, placeToLocalMarking.get(firstLater) + placeToLocalMarking.get(activityPos));
             }
         }
 
         if (forwards) {
-            overfed = placeToLocalMarking.get(endEvent) > 0;
-            // TODO: Sobald ein marking weniger als 0 Token hat, sollte der Place underfed sein
-            underfed = (placeToLocalMarking.get(endEvent) < 0) || (!valid && !branched);
+            overfed = placeToLocalMarking.get(lastActivityPos) > 0;
+            underfed = (placeToLocalMarking.get(lastActivityPos) < 0) || (!valid && !branched);
         } else {
             underfed |= (!valid && !branched);
         }

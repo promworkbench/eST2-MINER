@@ -1,11 +1,10 @@
 package org.processmining.est2miner.algorithms.placeevaluation;
 
 public class LpoESTValidationResult {
-    private String placeName;
-    private boolean valid;
-    private ValidationPhase phase;
-    private boolean overfed;
-    private boolean underfed;
+    private final String placeName;
+    private final ValidationPhase phase;
+    private final boolean overfed;
+    private final boolean underfed;
 
     public LpoESTValidationResult(String placeName, boolean valid, ValidationPhase phase) {
         this.placeName = placeName;
@@ -21,11 +20,6 @@ public class LpoESTValidationResult {
         this.underfed = underfed;
     }
 
-
-    public ValidationPhase getPhase() {
-        return phase;
-    }
-
     public boolean isOverfed() {
         return overfed;
     }
@@ -36,10 +30,10 @@ public class LpoESTValidationResult {
 
     @Override
     public String toString() {
-        return "LpoValidationResult" + "{" + (placeName != null ? placeName + ": " : "") + "valid=" + valid + ", " + "phase=" + phase + ", " + "overfed=" + overfed + ", " + "underfed=" + underfed + '}';
+        return "LpoValidationResult" + "{" + (placeName != null ? placeName + ": " : "") + "phase=" + phase + ", " + "overfed=" + overfed + ", " + "underfed=" + underfed + '}';
     }
 
-    enum ValidationPhase {
+    public enum ValidationPhase {
         FLOW, FORWARDS, BACKWARDS;
 
         public String toString() {

@@ -1,8 +1,6 @@
 package org.processmining.est2miner.models.preprocessing;
 
-import org.deckfour.xes.classification.XEventNameClassifier;
-import org.deckfour.xes.model.XEvent;
-import org.processmining.partialorder.ptrace.model.PTrace;
+import org.processmining.est2miner.models.coreobjects.ESTPartialOrder;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -10,22 +8,16 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 
 public class IsomorphismCandidate {
-    private PTrace pTraceOfTarget;
-    private Integer target;
-    private PTrace pTraceOfCandidates;
+    private final ESTPartialOrder pTraceOfTarget;
+    private final Integer target;
+    private final ESTPartialOrder pTraceOfCandidates;
     private Collection<Integer> candidates;
-    private static final XEventNameClassifier classifier = new XEventNameClassifier();
 
-    public IsomorphismCandidate(PTrace pTraceOfTarget, PTrace pTraceOfCandidates, Integer target,
-                                Collection<Integer> candidates) {
+    public IsomorphismCandidate(ESTPartialOrder pTraceOfTarget, ESTPartialOrder pTraceOfCandidates, Integer target, Collection<Integer> candidates) {
         this.pTraceOfTarget = pTraceOfTarget;
         this.target = target;
         this.pTraceOfCandidates = pTraceOfCandidates;
         this.candidates = candidates;
-    }
-
-    public XEvent getTargetEvent() {
-        return pTraceOfTarget.getEvent(target);
     }
 
     public Integer getTarget() {
@@ -36,11 +28,11 @@ public class IsomorphismCandidate {
         return candidates;
     }
 
-    public Collection<Integer> getIngoingIndicesOfCandidate(int candidate){
+    public Collection<Integer> getIngoingIndicesOfCandidate(int candidate) {
         return pTraceOfCandidates.getPredecessorIndices(candidate);
     }
 
-    public Collection<Integer> getOutgoingIndicesOfCandidate(int candidate){
+    public Collection<Integer> getOutgoingIndicesOfCandidate(int candidate) {
         return pTraceOfCandidates.getSuccessorIndices(candidate);
     }
 
@@ -56,21 +48,21 @@ public class IsomorphismCandidate {
         ArrayList<String> result = new ArrayList<>();
 
         for (Integer predecessorIndex : pTraceOfTarget.getPredecessorIndices(target)) {
-            result.add(classifier.getClassIdentity(pTraceOfTarget.getEvent(predecessorIndex)));
+            result.add(pTraceOfTarget.get(predecessorIndex));
         }
 
         return result;
     }
 
-    public void updateCandidatesUsingFilter(HashMap<Integer, Integer> mappingToFit){
+    public void updateCandidatesUsingFilter(HashMap<Integer, Integer> mappingToFit) {
         candidates = candidates.stream().filter(id -> !mappingToFit.containsKey(id)).collect(Collectors.toList());
     }
 
     public String getTargetPTraceEventName(Integer id) {
-        return classifier.getClassIdentity(pTraceOfTarget.getEvent(id));
+        return pTraceOfTarget.get(id);
     }
 
     public String getCandidatePTraceEventName(Integer id) {
-        return classifier.getClassIdentity(pTraceOfCandidates.getEvent(id));
+        return pTraceOfCandidates.get(id);
     }
 }

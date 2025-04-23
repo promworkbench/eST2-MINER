@@ -1,6 +1,6 @@
 
 					<packages>
-						<package name="eST2-Miner" version="6.15.5" os="all" url="eST2-Miner/eST2-Miner-6.15.5-all.zip" desc="eST2-Miner" org="RWTH Aachen" license="GPL" author="C. Rennert" auto="false" hasPlugins="true" logo="prom_subtitle_hat_300.png">
+						<package name="eST2-Miner" version="6.15.7" os="all" url="eST2-Miner/eST2-Miner-6.15.7-all.zip" desc="eST2-Miner" org="RWTH Aachen" license="GPL" author="C. Rennert" auto="false" hasPlugins="true" logo="prom_subtitle_hat_300.png">
 				        <dependency org="prom" name="ProM-Plugins" rev="latest" changing="true" transitive="true"/>
         <dependency org="prom" name="BasicUtils" rev="latest" changing="true" transitive="true"/>
         <dependency org="prom" name="Widgets" rev="latest" changing="true" transitive="true"/>
